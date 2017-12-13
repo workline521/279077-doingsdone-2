@@ -1,38 +1,35 @@
+
 <?php
 // показывать или нет выполненные задачи
 $show_complete_tasks = rand(0, 1);
-
 // устанавливаем часовой пояс в Московское время
 date_default_timezone_set('Europe/Moscow');
-
 $days = rand(-3, 3);
 $task_deadline_ts = strtotime("+" . $days . " day midnight"); // метка времени даты выполнения задачи
 $current_ts = strtotime('now midnight'); // текущая метка времени
-
 // запишите сюда дату выполнения задачи в формате дд.мм.гггг
-$date_deadline = null;
-
+$date_deadline = date("d.m.Y", $task_deadline_ts);
 // в эту переменную запишите кол-во дней до даты задачи
-$days_until_deadline = null;
+$days_until_deadline = floor(($task_deadline_ts - $current_ts) / 86400);
 ?>
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>Дела в порядке</title>
+    <title>Дела в Порядке!</title>
     <link rel="stylesheet" href="css/normalize.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 
-<body><!--class="overlay"-->
+<body> <!--class="overlay"-->
 <h1 class="visually-hidden">Дела в порядке</h1>
 
 <div class="page-wrapper">
     <div class="container container--with-sidebar">
         <header class="main-header">
             <a href="#">
-                <img src="img/logo.png" width="153" height="42" alt="Логотип Дела в порядке">
+                <img src="img/logo.png" width="153" height="42" alt="Логитип Дела в порядке">
             </a>
 
             <div class="main-header__side">
@@ -64,7 +61,7 @@ $days_until_deadline = null;
                         </li>
 
                         <li class="main-navigation__list-item main-navigation__list-item--active">
-                            <a class="main-navigation__list-item-link" href="#">Работа</a>
+                            <a class="main-navigation__list-item-link" href="#">Учеба</a>
                             <span class="main-navigation__list-item-count">12</span>
                         </li>
 
@@ -91,61 +88,88 @@ $days_until_deadline = null;
             <main class="content__main">
                 <h2 class="content__main-heading">Список задач</h2>
 
-                <form class="search-form" action="index.html" method="post">
+                <form class="search-form" action="index.php" method="post">
                     <input class="search-form__input" type="text" name="" value="" placeholder="Поиск по задачам">
 
                     <input class="search-form__submit" type="submit" name="" value="Искать">
                 </form>
 
                 <div class="tasks-controls">
-                    <nav class="tasks-switch">
-                        <a href="/" class="tasks-switch__item tasks-switch__item--active">Все задачи</a>
-                        <a href="/" class="tasks-switch__item">Повестка дня</a>
-                        <a href="/" class="tasks-switch__item">Завтра</a>
-                        <a href="/" class="tasks-switch__item">Просроченные</a>
-                    </nav>
+                    <div class="radio-button-group">
+                        <label class="radio-button">
+                            <input class="radio-button__input visually-hidden" type="radio" name="radio" checked="">
+                            <span class="radio-button__text">Все задачи</span>
+                        </label>
+
+                        <label class="radio-button">
+                            <input class="radio-button__input visually-hidden" type="radio" name="radio">
+                            <span class="radio-button__text">Повестка дня</span>
+                        </label>
+
+                        <label class="radio-button">
+                            <input class="radio-button__input visually-hidden" type="radio" name="radio">
+                            <span class="radio-button__text">Завтра</span>
+                        </label>
+
+                        <label class="radio-button">
+                            <input class="radio-button__input visually-hidden" type="radio" name="radio">
+                            <span class="radio-button__text">Просроченные</span>
+                        </label>
+                    </div>
 
                     <label class="checkbox">
-                        <a href="/">
-                            <!--добавить сюда аттрибут "checked", если переменная $show_complete_tasks равна единице-->
-                            <input class="checkbox__input visually-hidden" type="checkbox">
-                            <span class="checkbox__text">Показывать выполненные</span>
-                        </a>
+                        <!--добавить сюда аттрибут "checked", если переменная $show_complete_tasks равна единице-->
+                        <input id="show-complete-tasks" class="checkbox__input visually-hidden" type="checkbox" <?= ($show_complete_tasks) ? 'checked' : '' ?>>
+                        <span class="checkbox__text">Показывать выполненные</span>
                     </label>
                 </div>
 
                 <table class="tasks">
-<!--                    Добавьте класс task--important, если до выполнения задачи меньше дня-->
-                    <tr class="tasks__item task">
-                        <td class="task__select">
-                            <label class="checkbox task__checkbox">
-                                <input class="checkbox__input visually-hidden" type="checkbox">
-                                <a href="/"><span class="checkbox__text">Выполнить домашнее задание</span></a>
-                            </label>
-                        </td>
-
-                        <td class="task__file">
-                        </td>
-
-                        <td class="task__date"><!-- Здесь вывести содержимое переменной $date_deadline --></td>
-                    </tr>
 
                     <!--показывать следующий тег <tr/>, если переменная равна единице-->
+                    <?php if($show_complete_tasks): ?>
                     <tr class="tasks__item task task--completed">
                         <td class="task__select">
                             <label class="checkbox task__checkbox">
                                 <input class="checkbox__input visually-hidden" type="checkbox" checked>
-                                <a href="/"><span class="checkbox__text">Сделать главную страницу Дела в порядке</span></a>
+                                <span class="checkbox__text">Записаться на интенсив "Базовый PHP"</span>
                             </label>
-
                         </td>
+                        <td class="task__date">10.04.2017</td>
 
-                        <td class="task__file">
-                            <a class="download-link" href="#">Home.psd</a>
+                        <td class="task__controls">
                         </td>
-
-                        <td class="task__date"><!--выведите здесь дату выполнения задачи--></td>
                     </tr>
+                    <?php endif; ?>
+                    <tr class="tasks__item task <?= ($days_until_deadline <= 0) ?  'task--important' : '' ?>">
+                        <td class="task__select">
+                            <label class="checkbox task__checkbox">
+                                <input class="checkbox__input visually-hidden" type="checkbox">
+                                <span class="checkbox__text">Выполнить первое задание</span>
+                            </label>
+                        </td>
+
+                        <td class="task__date">
+                            <!--выведите здесь дату выполнения задачи-->
+                            <?= $date_deadline ?>
+                        </td>
+
+                        <td class="task__controls">
+                            <button class="expand-control" type="button" name="button">Выполнить первое задание</button>
+
+                            <ul class="expand-list hidden">
+                                <li class="expand-list__item">
+                                    <a href="#">Выполнить</a>
+                                </li>
+
+                                <li class="expand-list__item">
+                                    <a href="#">Удалить</a>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+
+
                 </table>
             </main>
         </div>
@@ -196,7 +220,7 @@ $days_until_deadline = null;
 
     <h2 class="modal__heading">Добавление задачи</h2>
 
-    <form class="form"  action="index.html" method="post">
+    <form class="form" class="" action="index.html" method="post">
         <div class="form__row">
             <label class="form__label" for="name">Название <sup>*</sup></label>
 
@@ -212,13 +236,13 @@ $days_until_deadline = null;
         </div>
 
         <div class="form__row">
-            <label class="form__label" for="date">Дата выполнения</label>
+            <label class="form__label" for="date">Дата выполнения <sup>*</sup></label>
 
-            <input class="form__input form__input--date" type="date" name="date" id="date" value="" placeholder="Введите дату в формате ДД.ММ.ГГГГ">
+            <input class="form__input form__input--date" type="text" name="date" id="date" value="" placeholder="Введите дату в формате ДД.ММ.ГГГГ">
         </div>
 
         <div class="form__row">
-            <label class="form__label" for="preview">Файл</label>
+            <label class="form__label" for="file">Файл</label>
 
             <div class="form__input-file">
                 <input class="visually-hidden" type="file" name="preview" id="preview" value="">
@@ -235,22 +259,6 @@ $days_until_deadline = null;
     </form>
 </div>
 
-<div class="modal" hidden>
-    <button class="modal__close" type="button" name="button">Закрыть</button>
-
-    <h2 class="modal__heading">Добавление проекта</h2>
-
-    <form class="form"  action="index.html" method="post">
-        <div class="form__row">
-            <label class="form__label" for="project_name">Название <sup>*</sup></label>
-
-            <input class="form__input" type="text" name="name" id="project_name" value="" placeholder="Введите название проекта">
-        </div>
-
-        <div class="form__row form__row--controls">
-            <input class="button" type="submit" name="" value="Добавить">
-        </div>
-    </form>
-</div>
+<script type="text/javascript" src="js/script.js"></script>
 </body>
 </html>
