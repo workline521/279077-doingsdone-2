@@ -38,6 +38,7 @@ $pizza = [
 ];
 $task_list = [$interview, $test, $finished_task, $meeting, $catfood, $pizza];
 $filtered_tasks = $task_list;
+
 if (isset($_GET['project_id'])) {
     $projectId = (int) $_GET['project_id'];
     $filtered_tasks = [];
@@ -48,7 +49,9 @@ if (isset($_GET['project_id'])) {
                         header("HTTP/1.1 404 Not Found");
                         die('Страница не найдена');
                 }
+
        $project = $projects[$projectId];
+
        foreach ($task_list as $task) {
             if ($task['category'] == $project) {
             $filtered_tasks[] = $task;
@@ -57,6 +60,7 @@ if (isset($_GET['project_id'])) {
     }
  }
 include('functions.php');
+
 ?>
 <!DOCTYPE html>
 <html lang="en">

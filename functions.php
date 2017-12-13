@@ -1,4 +1,5 @@
 <?php
+
 function includeTemplate(string $path, array $data = []): string
 {
     if (!file_exists($path)) {
@@ -21,4 +22,5 @@ function calculateTasks(array $task_list, string $project): int
     }
     return $count;
 }
+
 ?>
