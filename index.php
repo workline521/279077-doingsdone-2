@@ -1,128 +1,186 @@
 <?php
-$projects = ['Все', 'Входящие', 'Учеба', 'Работа', 'Домашние дела', 'Авто'];
-$interview = [
-    'task' => 'Собеседование в IT компании',
-    'deadline' => '01.06.2018',
-    'category' => 'Работа',
-    'completed' => false
-];
-$test = [
-    'task' => 'Выполнить тестовое задание',
-    'deadline' => '25.05.2018',
-    'category' => 'Работа',
-    'completed' => false
-];
-$finished_task = [
-    'task' => 'Сделать задание первого раздела',
-    'deadline' => '21.04.2018',
-    'category' => 'Учеба',
-    'completed' => true
-];
-$meeting = [
-    'task' => 'Встреча с другом',
-    'deadline' => '22.04.2018',
-    'category' => 'Входящие',
-    'completed' => false
-];
-$catfood = [
-    'task' => 'Купить корм для кота',
-    'deadline' => null,
-    'category' => 'Домашние дела',
-    'completed' => false
-];
-$pizza = [
-    'task' => 'Заказать пиццу',
-    'deadline' => null,
-    'category' => 'Домашние дела',
-    'completed' => false
-];
-$task_list = [$interview, $test, $finished_task, $meeting, $catfood, $pizza];
-$filtered_tasks = $task_list;
+require_once('config/config.php');
+require_once ('functions.php');
+require_once ('init.php');
 
-if (isset($_GET['project_id'])) {
-    $projectId = (int) $_GET['project_id'];
-    $filtered_tasks = [];
-    if ($projectId == 0) {
-        $filtered_tasks = $task_list;
-    } else {
-                if (!isset($projects[$projectId])) {
-                        header("HTTP/1.1 404 Not Found");
-                        die('Страница не найдена');
-                }
+$category_page = 1;
+$modal_form = '';
+$modal_login = '';
+$modal_project = '';
 
-       $project = $projects[$projectId];
 
-       foreach ($task_list as $task) {
-            if ($task['category'] == $project) {
-            $filtered_tasks[] = $task;
-            }
-       }
+$projects = get_projects($db_connect);
+$tasks = get_tasks($db_connect, $_SESSION['user_id']);
+
+$today = date('Y-m-d', strtotime('now'));
+$tomorrow = date('Y-m-d', strtotime('+1 day'));
+if (isset($_GET['today_task'])) {
+    $tasks = filtred_day_tasks($db_connect, $_SESSION['user_id'], $today);
+} elseif (isset($_GET['tomorrow_task'])) {
+    $tasks = filtred_day_tasks($db_connect, $_SESSION['user_id'], $tomorrow);
+} elseif (isset($_GET['ended_task'])) {
+    $tasks = filtred_delay_tasks($db_connect, $_SESSION['user_id'], $today);
+} elseif (isset($_GET['all_task'])) {
+    $tasks = get_tasks($db_connect, $_SESSION['user_id']);
+}
+
+//Считывает параметр запроса category_page и передаёт её параметр для переключения категорий
+
+if (isset($_GET['category_page'])) {
+    $category_page = intval($_GET['category_page']);
+};
+
+//Включает отображение попапа формы при параметре запроса get=form
+
+if (isset($_GET['form']) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $modal_form = get_template('form', [
+        'projects' => $projects,
+    ]);
+};
+
+//Включает отображение попапа логина при параметре запроса get=login
+
+if (isset($_GET['login']) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $modal_login = get_template('login', []);
+}
+
+//включает отображение попапа проектов при параметре запроса get=project
+
+if (isset($_GET['project']) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $modal_project = get_template('project', []);
+}
+
+//При получении данных из формы производит валидацию. Если проходит валидацию добавляет задачу, если нет выводит ошибки
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['form'])) {
+    $get_data = $_POST;
+    $required = ['task', 'project_id'];
+    $errors = validateForm($get_data, $required);
+
+
+    if (!check_exist_project($projects, (int) $get_data['project_id'])) {
+        $errors['project_id'] = true;
     }
- }
-include('functions.php');
+    if (!empty($_FILES['file_link']['name']) && empty($errors)) {
+        $path = $_FILES['file_link']['name'];
+        $res = move_uploaded_file($_FILES['file_link']['tmp_name'], UPLOAD_DIR_PATH . $path);
+        $get_data['file_link'] = $path;
+    }
+    if (!empty($errors)) {
+        $modal_form = get_template('form', [
+            'get_data' => $get_data,
+            'errors' => $errors,
+            'projects' => $projects,
+        ]);
+    } else {
+        if (empty($get_data['date_deadline'])) {
+            unset($get_data['date_deadline']);
+        } else {
+            $get_data['date_deadline'] = date_format(date_create($get_data['date_deadline']), 'Y-m-d H:i:s');
+        }
+        $get_data['date_start'] = date_now_sql();
+        $get_data['user_id'] = $_SESSION['user_id'];
+        $get_data['project_id'] = (int) $get_data['project_id'];
+        db_insert($db_connect, 'tasks', $get_data);
+        header('Location: index.php');
+    }
+}
 
-?>
-<!DOCTYPE html>
-<html lang="en">
+//Валидирует данные авторизации и открывает сессию после входа
 
-<?= includeTemplate("templates/head.php", []); ?>
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['login'])) {
+    $get_data = $_POST;
+    $required = ['email', 'password'];
+    $errors = validateForm($get_data, $required);
+    $user = check_exist_email($db_connect, $get_data['email']);
 
-<body><!--class="overlay"-->
-<h1 class="visually-hidden">Дела в порядке</h1>
+    if ($user) {
+        if (check_password($db_connect, $get_data['email'], $get_data['password'])) {
+            $user_data = get_users_data($db_connect, $get_data['email']);
+            $_SESSION['user'] = $get_data['email'];
+            $_SESSION['user_id'] = $user_data[0]['user_id'];
+            $_SESSION['user_name'] = $user_data[0]['user_name'];
+        } else {
+            $errors['password'] = true;
+        }
+    } else {
+        $errors['email'] = true;
+    }
 
-<div class="page-wrapper">
-    <div class="container container--with-sidebar">
-        <?= includeTemplate("templates/header.php", []); ?>
-        <?= includeTemplate("templates/main.php", ['projects' => $projects, 'task_list' => $task_list, 'filtered_tasks' => $filtered_tasks]); ?>
-    </div>
-</div>
+    if (empty($errors)) {
+        header('Location: index.php');
+    } else {
+        $modal_login = get_template('login', [
+            'errors' => $errors,
+            'get_data' => $get_data
+        ]);
+    }
+}
 
-<?= includeTemplate("templates/footer.php", []); ?>
+//Валидирует данные попапа project и записывает данные в БД
 
-<div class="modal" hidden>
-    <button class="modal__close" type="button" name="button">Закрыть</button>
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['project'])) {
+    $get_data = $_POST;
+    $required = ['project_name'];
+    $errors = validateForm($get_data, $required);
 
-    <h2 class="modal__heading">Добавление задачи</h2>
+    if (!empty($errors)) {
+        $modal_project = get_template('project', [
+            'get_data' => $get_data,
+            'errors' => $errors
+        ]);
+    } else {
+        $get_data['user_id'] = $_SESSION['user_id'];
+        db_insert($db_connect, 'projects', $get_data);
+        header('Location: index.php');
+    }
+}
 
-    <form class="form" action="index.html" method="post">
-        <div class="form__row">
-            <label class="form__label" for="name">Название <sup>*</sup></label>
+// при параметре запросе show_completed устанавливает куки равные значению запроса
 
-            <input class="form__input" type="text" name="name" id="name" value="" placeholder="Введите название">
-        </div>
+if (isset($_GET['show_completed'])) {
+    $show_completed = $_GET['show_completed'];
+    setcookie('show_completed', $show_completed, strtotime('+30 days'));
+    header('Location: /');
+};
 
-        <div class="form__row">
-            <label class="form__label" for="project">Проект <sup>*</sup></label>
+//тоглит статус выполнения задачи
 
-            <select class="form__input form__input--select" name="project" id="project">
-                <option value="">Входящие</option>
-            </select>
-        </div>
+if (isset($_GET['finish_task']) && isset($_GET['key'])) {
+    $num_task = (int) $_GET['finish_task'];
+    $key = (int) $_GET['key'];
 
-        <div class="form__row">
-            <label class="form__label" for="date">Дата выполнения <sup>*</sup></label>
+    if ($tasks[$key]['date_finish'] === null) {
+        $result = update_date_finish($db_connect, date_now_sql(), $num_task);
+        header('Location: index.php');
+    } else {
+        $result = update_date_finish_null($db_connect, $num_task);
+        header('Location: /');
+    }
+}
 
-            <input class="form__input form__input--date" type="text" name="date" id="date" value="" placeholder="Введите дату в формате ДД.ММ.ГГГГ">
-        </div>
+//выводет отображение страниц для пользователя или гостя
 
-        <div class="form__row">
-            <label class="form__label" for="file">Файл</label>
+if (isset($_SESSION['user'])) {
+    $page_content = get_template('index', [
+        'projects' => $projects,
+        'tasks' => $tasks,
+        'category_page' => $category_page
+    ]);
+    $layout_content = get_template('layout', [
+        'content' => $page_content,
+        'title' => 'Дела в порядке',
+        'user_name' => $_SESSION['user_name'],
+        'modal_form' => $modal_form,
+        'modal_login' => $modal_login,
+        'modal_project' => $modal_project
+    ]);
+    print($layout_content);
+} else {
+    $page_content = get_template('guest', [
+        'modal_login' => $modal_login
+    ]);
+    print($page_content);
+}
 
-            <div class="form__input-file">
-                <input class="visually-hidden" type="file" name="preview" id="preview" value="">
 
-                <label class="button button--transparent" for="preview">
-                    <span>Выберите файл</span>
-                </label>
-            </div>
-        </div>
-
-        <div class="form__row form__row--controls">
-            <input class="button" type="submit" name="" value="Добавить">
-        </div>
-    </form>
-</div>
-
-<script type="text/javascript" src="js/script.js"></script>
-</body>
-</html>
